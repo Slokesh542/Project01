@@ -1,1 +1,50 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+
+def fetch_flight_details(flight_number):
+    url = f'https://www.flightaware.com/live/flight/{flight_number}'
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # Check if the request was successful
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Find all script tags
+        script_tags = soup.find_all('script')
+        
+        for script_tag in script_tags:
+            if script_tag.string and '"origin":' in script_tag.string:
+                script_content = script_tag.string
+                
+                # Use regular expressions to find the friendlyName and friendlyLocation values for origin and destination separately
+                origin_friendly_name_match = re.search(r'"origin":\{.*?"friendlyName":"([^"]+)"', script_content)
+                origin_friendly_location_match = re.search(r'"origin":\{.*?"friendlyLocation":"([^"]+)"', script_content)
+                destination_friendly_name_match = re.search(r'"destination":\{.*?"friendlyName":"([^"]+)"', script_content)
+                destination_friendly_location_match = re.search(r'"destination":\{.*?"friendlyLocation":"([^"]+)"', script_content)
+                
+                if origin_friendly_name_match and origin_friendly_location_match and destination_friendly_name_match and destination_friendly_location_match:
+                    origin_friendly_name = origin_friendly_name_match.group(1)
+                    origin_friendly_location = origin_friendly_location_match.group(1)
+                    destination_friendly_name = destination_friendly_name_match.group(1)
+                    destination_friendly_location = destination_friendly_location_match.group(1)
+                    return (origin_friendly_name, origin_friendly_location, destination_friendly_name, destination_friendly_location)
+
+        return ("Origin details not found", "Destination details not found")
+
+    except requests.exceptions.RequestException as e:
+        return (f"Error fetching the data: {e}", "Not available")
+
+if __name__ == "__main__":
+    flight_number = input("Please enter the flight number: ")
+    origin_airport, origin_location, destination_airport, destination_location = fetch_flight_details(flight_number)
+    print(f"Origin Airport: {origin_airport}")
+    print(f"Origin Location (City, Country): {origin_location}")
+    print(f"Destination Airport: {destination_airport}")
+    print(f"Destination Location (City, Country): {destination_location}")
 
